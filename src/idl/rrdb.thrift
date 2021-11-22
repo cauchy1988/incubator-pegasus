@@ -299,6 +299,17 @@ struct duplicate_response
     2: optional string error_hint;
 }
 
+enum negotiate_feature_flag {
+    BATCH_GET = 0,
+}
+
+struct negotiate_feature_request {
+}
+
+struct negotiate_feature_response {
+    1: list<negotiate_feature_flag> supported_features;
+}
+
 service rrdb
 {
     update_response put(1:update_request update);
@@ -316,5 +327,7 @@ service rrdb
     scan_response get_scanner(1:get_scanner_request request);
     scan_response scan(1:scan_request request);
     oneway void clear_scanner(1:i64 context_id);
+
+    negotiate_feature_response negotiate_features(1:negotiate_feature_request request);
 }
 

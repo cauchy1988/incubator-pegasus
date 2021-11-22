@@ -24,6 +24,7 @@
 #include <pegasus/version.h>
 #include <pegasus/git_commit.h>
 #include "reporter/pegasus_counter_reporter.h"
+#include "features_negotiation.h"
 
 namespace pegasus {
 namespace server {
@@ -43,6 +44,7 @@ public:
         std::vector<std::string> args_new(args);
         args_new.emplace_back(PEGASUS_VERSION);
         args_new.emplace_back(PEGASUS_GIT_COMMIT);
+        _negotiation.open_service();
         ::dsn::error_code ret = ::dsn::replication::replication_service_app::start(args_new);
 
         if (ret == ::dsn::ERR_OK) {
@@ -63,6 +65,7 @@ public:
 
 private:
     bool _updater_started;
+    features_negotiation _negotiation;
 };
 
 class pegasus_meta_service_app : public ::dsn::service::meta_service_app
@@ -79,6 +82,7 @@ public:
         std::vector<std::string> args_new(args);
         args_new.emplace_back(PEGASUS_VERSION);
         args_new.emplace_back(PEGASUS_GIT_COMMIT);
+        _negotiation.open_service();
         ::dsn::error_code ret = ::dsn::service::meta_service_app::start(args_new);
 
         if (ret == ::dsn::ERR_OK) {
@@ -99,6 +103,7 @@ public:
 
 private:
     bool _updater_started;
+    features_negotiation _negotiation;
 };
 
 } // namespace server

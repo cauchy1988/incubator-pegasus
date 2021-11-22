@@ -235,7 +235,7 @@ function run_build()
     if [ "$ENABLE_ROCKSDB_PORTABLE" == "YES" ]; then
         OPT="$OPT --enable_rocksdb_portable"
     fi
-    ./run.sh build $OPT --notest
+    #./run.sh build $OPT --notest
     if [ $? -ne 0 ]; then
         echo "ERROR: build rdsn failed"
         exit 1
