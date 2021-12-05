@@ -327,7 +327,10 @@ service rrdb
     scan_response get_scanner(1:get_scanner_request request);
     scan_response scan(1:scan_request request);
     oneway void clear_scanner(1:i64 context_id);
+}
 
+serivce feature_negotiation
+{
     negotiate_feature_response negotiate_features(1:negotiate_feature_request request);
 }
 
