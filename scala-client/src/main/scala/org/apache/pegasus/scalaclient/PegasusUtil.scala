@@ -1,16 +1,28 @@
-package com.xiaomi.infra.pegasus.scalaclient
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.pegasus.scalaclient
 
 import java.util
-
-import com.xiaomi.infra.pegasus.client.{
-  FilterType,
-  MultiGetOptions,
-  PegasusTableInterface,
-  HashKeyData => PHashKeyData,
-  SetItem => PSetItem
-}
-import com.xiaomi.infra.pegasus.scalaclient.{Serializer => SER}
+import org.apache.pegasus.client.{FilterType, MultiGetOptions, PegasusTableInterface, HashKeyData => PHashKeyData, SetItem => PSetItem}
 import org.apache.commons.lang3.tuple.Pair
+import org.apache.pegasus.scalaclient
 
 import scala.collection.JavaConversions._
 import scala.concurrent.duration._
@@ -31,10 +43,10 @@ private[scalaclient] trait PegasusUtil {
     result
   }
 
-  implicit def ser[A](a: A)(implicit ser: SER[A]): Array[Byte] =
+  implicit def ser[A](a: A)(implicit ser: Serializer[A]): Array[Byte] =
     ser.serialize(a)
   implicit def ser[A](list: Seq[A])(
-      implicit ser: SER[A]): util.List[Array[Byte]] = {
+      implicit ser: Serializer[A]): util.List[Array[Byte]] = {
     val javaList = new util.ArrayList[Array[Byte]](list.size)
     list.foreach { a =>
       javaList.add(ser.serialize(a))
@@ -42,15 +54,15 @@ private[scalaclient] trait PegasusUtil {
     javaList
   }
 
-  implicit def deser[A](bytes: Array[Byte])(implicit ser: SER[A]): A =
+  implicit def deser[A](bytes: Array[Byte])(implicit ser: Serializer[A]): A =
     ser.deserialize(bytes)
 
   @inline implicit def durationToMs(timeout: Duration): Int =
     timeout.toMillis.toInt
 
   def pegasusKeysToPairList[H, S](keys: Seq[PegasusKey[H, S]])(
-      implicit hSer: SER[H],
-      sSer: SER[S]): util.List[Pair[Array[Byte], Array[Byte]]] = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]): util.List[Pair[Array[Byte], Array[Byte]]] = {
     keys.map(k => Pair.of(hSer.serialize(k.hashKey), sSer.serialize(k.sortKey)))
   }
 
@@ -63,14 +75,14 @@ private[scalaclient] trait PegasusUtil {
   }
 
   def bytesPairToTuple[A, B](pair: Pair[Array[Byte], Array[Byte]])(
-      implicit aSer: SER[A],
-      bSer: SER[B]) = {
+    implicit aSer: Serializer[A],
+    bSer: Serializer[B]) = {
     (aSer.deserialize(pair.getLeft), bSer.deserialize(pair.getRight))
   }
 
   def tupleToBytesPair[A, B](t: (A, B))(
-      implicit aSer: SER[A],
-      bSer: SER[B]): Pair[Array[Byte], Array[Byte]] = {
+    implicit aSer: Serializer[A],
+    bSer: Serializer[B]): Pair[Array[Byte], Array[Byte]] = {
     Pair.of(aSer.serialize(t._1), bSer.serialize(t._2))
   }
 
@@ -78,8 +90,8 @@ private[scalaclient] trait PegasusUtil {
     list.toList.map(Option.apply)
   }
 
-  def convertMultiGetKeys[H, S](keys: Seq[(H, Seq[S])])(implicit hSer: SER[H],
-                                                        sSer: SER[S])
+  def convertMultiGetKeys[H, S](keys: Seq[(H, Seq[S])])(implicit hSer: Serializer[H],
+                                                        sSer: Serializer[S])
     : java.util.List[Pair[Array[Byte], util.List[Array[Byte]]]] = {
     keys.map {
       case (hashKey, sortKeys) =>
@@ -88,38 +100,38 @@ private[scalaclient] trait PegasusUtil {
   }
 
   def convertToHashKeyData[H, S, V](data: PHashKeyData)(
-      implicit hSer: SER[H],
-      sSer: SER[S],
-      vSer: SER[V]): HashKeyData[H, S, V] = {
-    HashKeyData[H, S, V](hSer.deserialize(data.hashKey),
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S],
+    vSer: Serializer[V]): HashKeyData[H, S, V] = {
+    scalaclient.HashKeyData[H, S, V](hSer.deserialize(data.hashKey),
                          data.values.toList.map(bytesPairToTuple[S, V]))
   }
 
-  def convertValue[S, V](value: (S, Array[Byte]))(implicit ser: SER[V]) =
+  def convertValue[S, V](value: (S, Array[Byte]))(implicit ser: Serializer[V]) =
     (value._1, ser.deserialize(value._2))
 
   def convertHashKeyData[H, S, V](data: HashKeyData[H, S, Array[Byte]])(
-      implicit ser: SER[V]): HashKeyData[H, S, V] = {
-    HashKeyData[H, S, V](data.hashKey, data.values.map(convertValue[S, V]))
+      implicit ser: Serializer[V]): HashKeyData[H, S, V] = {
+    scalaclient.HashKeyData[H, S, V](data.hashKey, data.values.map(convertValue[S, V]))
   }
 
   def convertHashKeyData[H, S, V](data: HashKeyData[H, S, V])(
-      implicit hSer: SER[H],
-      sSer: SER[S],
-      vSer: SER[V]): PHashKeyData = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S],
+    vSer: Serializer[V]): PHashKeyData = {
     new PHashKeyData(data.hashKey, data.values.map(tupleToBytesPair(_)))
   }
 
   def convertMultiGetResult[S](result: PegasusTableInterface.MultiGetResult)(
-      implicit sSer: SER[S]) = {
+      implicit sSer: Serializer[S]) = {
     MultiGetResult(result.allFetched, result.values.toList.map { p =>
       (sSer.deserialize(p.getLeft), p.getRight)
     })
   }
 
-  def convertSetItem[H, S, V](item: SetItem[H, S, V])(implicit hSer: SER[H],
-                                                      sSer: SER[S],
-                                                      vSer: SER[V]) = {
+  def convertSetItem[H, S, V](item: SetItem[H, S, V])(implicit hSer: Serializer[H],
+                                                      sSer: Serializer[S],
+                                                      vSer: Serializer[V]) = {
     new PSetItem(item.hashKey,
                  item.sortKey,
                  item.value,

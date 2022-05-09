@@ -1,6 +1,6 @@
 version := "2.2.0-3-release"
 
-organization := "com.xiaomi.infra"
+organization := "org.apache"
 
 name := "pegasus-scala-client"
 
@@ -35,6 +35,6 @@ credentials += Credentials(
 
 libraryDependencies ++= Seq(
   "com.google.guava" % "guava" % "21.0",
-  "com.xiaomi.infra" % "pegasus-client" % "2.2.0",
+  "org.apache.pegasus" % "pegasus-client" % "2.4-SNAPSHOT",
   "org.scalatest" %% "scalatest" % "3.0.3" % Test
 )

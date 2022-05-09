@@ -1,13 +1,31 @@
-package com.xiaomi.infra.pegasus.scalaclient
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.pegasus.scalaclient
 
 import java.util
 
-import com.xiaomi.infra.pegasus.client.{
+import org.apache.pegasus.client.{
   PException,
   PegasusTableInterface => ITable,
   HashKeyData => PHashKeyData
 }
-import com.xiaomi.infra.pegasus.scalaclient.{Serializer => SER}
 import org.apache.commons.lang3.tuple.Pair
 
 import scala.collection.JavaConversions._
@@ -25,29 +43,29 @@ trait ScalaPegasusTable extends PegasusUtil {
 
   @throws[PException]
   def exists[H, S](hashKey: H, sortKey: S, timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]): Boolean = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]): Boolean = {
     table.exist(hashKey, sortKey, timeout)
   }
 
   @throws[PException]
   def sortKeyCount[H](hashKey: H, timeout: Duration = 0 milli)(
-      implicit hSer: SER[H]) = {
+      implicit hSer: Serializer[H]) = {
     table.sortKeyCount(hashKey, timeout)
   }
 
   @throws[PException]
   def get[H, S](hashKey: H, sortKey: S, timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]): PegasusResult = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]): PegasusResult = {
     val result = table.get(hashKey, sortKey, timeout)
     PegasusResult(result)
   }
 
   @throws[PException]
   def batchGet[H, S](keys: Seq[PegasusKey[H, S]], timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]): PegasusResultList = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]): PegasusResultList = {
     val result = new util.ArrayList[Array[Byte]]()
     table.batchGet(pegasusKeysToPairList(keys), result, timeout)
     PegasusResultList(result.toList)
@@ -55,8 +73,8 @@ trait ScalaPegasusTable extends PegasusUtil {
 
   @throws[PException]
   def batchGet2[H, S](keys: Seq[PegasusKey[H, S]], timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]): BatchGetResult[Array[Byte]] = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]): BatchGetResult[Array[Byte]] = {
     val result = new util.ArrayList[Pair[PException, Array[Byte]]]()
     val count = table.batchGet2(pegasusKeysToPairList(keys), result, timeout)
 
@@ -70,8 +88,8 @@ trait ScalaPegasusTable extends PegasusUtil {
                      maxFetchCount: Int = 100,
                      maxFetchSize: Int = 1000000,
                      timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]): MultiGetResult[S, Array[Byte]] = {
+                      implicit hSer: Serializer[H],
+                      sSer: Serializer[S]): MultiGetResult[S, Array[Byte]] = {
     val result =
       table.multiGet(hashKey, sortKeys, maxFetchCount, maxFetchSize, timeout)
     convertMultiGetResult(result)
@@ -85,8 +103,8 @@ trait ScalaPegasusTable extends PegasusUtil {
                           maxFetchCount: Int = 100,
                           maxFetchSize: Int = 1000000,
                           timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]): MultiGetResult[S, Array[Byte]] = {
+                           implicit hSer: Serializer[H],
+                           sSer: Serializer[S]): MultiGetResult[S, Array[Byte]] = {
     val result = table.multiGet(hashKey,
                                 startSortKey,
                                 stopSortKey,
@@ -99,8 +117,8 @@ trait ScalaPegasusTable extends PegasusUtil {
 
   @throws[PException]
   def batchMultiGet[H, S](keys: Seq[(H, Seq[S])], timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]): List[HashKeyData[H, S, Array[Byte]]] = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]): List[HashKeyData[H, S, Array[Byte]]] = {
     val result = new util.ArrayList[PHashKeyData]()
     table.batchMultiGet(convertMultiGetKeys(keys), result, timeout)
 
@@ -109,8 +127,8 @@ trait ScalaPegasusTable extends PegasusUtil {
 
   @throws[PException]
   def batchMultiGet2[H, S](keys: Seq[(H, Seq[S])], timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]): BatchMultiGetResult[H, S, Array[Byte]] = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]): BatchMultiGetResult[H, S, Array[Byte]] = {
     val result = new util.ArrayList[Pair[PException, PHashKeyData]]()
     val count = table.batchMultiGet2(convertMultiGetKeys(keys), result, timeout)
 
@@ -125,7 +143,7 @@ trait ScalaPegasusTable extends PegasusUtil {
       hashKey: H,
       maxFetchCount: Int = 100,
       maxFetchSize: Int = 1000000,
-      timeout: Duration = 0 milli)(implicit hSer: SER[H]) = {
+      timeout: Duration = 0 milli)(implicit hSer: Serializer[H]) = {
     val result =
       table.multiGetSortKeys(hashKey, maxFetchCount, maxFetchSize, timeout)
 
@@ -137,26 +155,26 @@ trait ScalaPegasusTable extends PegasusUtil {
                    sortKey: S,
                    value: V,
                    ttl: Duration = 0 second,
-                   timeout: Duration = 0 milli)(implicit hSer: SER[H],
-                                                sSer: SER[S],
-                                                vSer: SER[V]) = {
+                   timeout: Duration = 0 milli)(implicit hSer: Serializer[H],
+                                                sSer: Serializer[S],
+                                                vSer: Serializer[V]) = {
     table.set(hashKey, sortKey, value, ttl.toSeconds.toInt, timeout)
   }
 
   @throws[PException]
   def batchSet[H, S, V](items: Seq[SetItem[H, S, V]],
-                        timeout: Duration = 0 milli)(implicit hSer: SER[H],
-                                                     sSer: SER[S],
-                                                     vSer: SER[V]) = {
+                        timeout: Duration = 0 milli)(implicit hSer: Serializer[H],
+                                                     sSer: Serializer[S],
+                                                     vSer: Serializer[V]) = {
     table.batchSet(items.map(convertSetItem[H, S, V]), timeout)
   }
 
   @throws[PException]
   def batchSet2[H, S, V](items: Seq[SetItem[H, S, V]],
                          timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S],
-      vSer: SER[V]): BatchOpResult = {
+                          implicit hSer: Serializer[H],
+                          sSer: Serializer[S],
+                          vSer: Serializer[V]): BatchOpResult = {
     val result = new util.ArrayList[PException](items.size)
     val count = table.batchSet2(items.map(convertSetItem(_)), result, timeout)
     BatchOpResult(count, result.toList.map(Option.apply))
@@ -166,9 +184,9 @@ trait ScalaPegasusTable extends PegasusUtil {
   def multiSet[H, S, V](hashKey: H,
                         values: Seq[(S, V)],
                         ttl: Duration = 0 second,
-                        timeout: Duration = 0 milli)(implicit hSer: SER[H],
-                                                     sSer: SER[S],
-                                                     vSer: SER[V]) = {
+                        timeout: Duration = 0 milli)(implicit hSer: Serializer[H],
+                                                     sSer: Serializer[S],
+                                                     vSer: Serializer[V]) = {
     table.multiSet(hashKey,
                    values.map(tupleToBytesPair(_)),
                    ttl.toSeconds.toInt,
@@ -178,9 +196,9 @@ trait ScalaPegasusTable extends PegasusUtil {
   @throws[PException]
   def batchMultiSet[H, S, V](items: Seq[HashKeyData[H, S, V]],
                              ttl: Duration = 0 second,
-                             timeout: Duration = 0 milli)(implicit hSer: SER[H],
-                                                          sSer: SER[S],
-                                                          vSer: SER[V]) = {
+                             timeout: Duration = 0 milli)(implicit hSer: Serializer[H],
+                                                          sSer: Serializer[S],
+                                                          vSer: Serializer[V]) = {
     table.batchMultiSet(items.map(convertHashKeyData[H, S, V]),
                         ttl.toSeconds.toInt,
                         timeout)
@@ -190,9 +208,9 @@ trait ScalaPegasusTable extends PegasusUtil {
   def batchMultiSet2[H, S, V](items: Seq[HashKeyData[H, S, V]],
                               ttl: Duration = 0 second,
                               timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S],
-      vSer: SER[V]): BatchOpResult = {
+                               implicit hSer: Serializer[H],
+                               sSer: Serializer[S],
+                               vSer: Serializer[V]): BatchOpResult = {
     val result = new util.ArrayList[PException](items.size)
     val count = table.batchMultiSet2(items.map(convertHashKeyData[H, S, V]),
                                      ttl.toSeconds.toInt,
@@ -203,22 +221,22 @@ trait ScalaPegasusTable extends PegasusUtil {
 
   @throws[PException]
   def del[H, S](hashKey: H, sortKey: S, timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]) = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]) = {
     table.del(hashKey, sortKey, timeout)
   }
 
   @throws[PException]
   def batchDel[H, S](keys: Seq[PegasusKey[H, S]], timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]) = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]) = {
     table.batchDel(pegasusKeysToPairList(keys), timeout)
   }
 
   @throws[PException]
   def batchDel2[H, S](keys: Seq[PegasusKey[H, S]], timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]) = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]) = {
     val result = new util.ArrayList[PException](keys.size)
     val count = table.batchDel2(pegasusKeysToPairList(keys), result, timeout)
     BatchOpResult(count, result.toList.map(Option.apply))
@@ -226,22 +244,22 @@ trait ScalaPegasusTable extends PegasusUtil {
 
   @throws[PException]
   def multiDel[H, S](hashKey: H, sortKeys: Seq[S], timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]) = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]) = {
     table.multiDel(hashKey, sortKeys, timeout)
   }
 
   @throws[PException]
   def batchMultiDel[H, S](keys: Seq[(H, Seq[S])], timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]) = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]) = {
     table.batchMultiDel(convertMultiGetKeys(keys), timeout)
   }
 
   @throws[PException]
   def batchMultiDel2[H, S](keys: Seq[(H, Seq[S])], timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]) = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]) = {
     val result = new util.ArrayList[PException](keys.size)
     val count = table.batchMultiDel2(convertMultiGetKeys(keys), result, timeout)
     BatchOpResult(count, result.toList.map(Option.apply))
@@ -249,8 +267,8 @@ trait ScalaPegasusTable extends PegasusUtil {
 
   @throws[PException]
   def ttl[H, S](hashKey: H, sortKey: S, timeout: Duration = 0 milli)(
-      implicit hSer: SER[H],
-      sSer: SER[S]) = {
+    implicit hSer: Serializer[H],
+    sSer: Serializer[S]) = {
     table.ttl(hashKey, sortKey, timeout)
   }
 
@@ -260,7 +278,7 @@ trait ScalaPegasusTable extends PegasusUtil {
       sortKey: S,
       increment: Long,
       ttl: Duration = 0 milli,
-      timeout: Duration = 0 milli)(implicit hSer: SER[H], sSer: SER[S]) = {
+      timeout: Duration = 0 milli)(implicit hSer: Serializer[H], sSer: Serializer[S]) = {
     table.incr(hashKey,
                sortKey,
                increment,
